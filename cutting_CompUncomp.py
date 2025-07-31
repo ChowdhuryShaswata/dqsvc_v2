@@ -92,12 +92,16 @@ class cutting_CompUncomp(ComputeUncompute):
         circuits = self._construct_circuits(circuits_1, circuits_2)
         #print("circuit construction error")
 
+        print(f'the number of circuits is {len(circuits)}')
+
         if len(circuits) == 0:
             raise ValueError(
                 "At least one pair of circuits must be defined to calculate the state overlap."
             )
         
         values = self._construct_value_list(circuits_1, circuits_2, values_1, values_2)
+
+        print(f'the number of values is {len(values)}')
 
         opts = copy(self._default_options)
         opts.update_options(**options)
@@ -107,11 +111,23 @@ class cutting_CompUncomp(ComputeUncompute):
         #print(f'Circuit parameters: {circuits.parameters}')
         operator = self.generate_operator(circuits[0])
 
-        #Assign parameters to circuits prior to cutting.
+        #print(f'the {0} circuit parameters are {circuits[0].parameters}')
+        #print(f'the {1} circuit parameters are {circuits[1].parameters}')
+
+        # #Assign parameters to circuits prior to cutting.
+        # for i in range(len(circuits)):
+        #     #TODO: does assign parameters require values to be a single list?
+        #     #print(f'the {i+1} circuit parameters are {circuits[i+1].parameters}')
+        #     #print(f'the {i} circuit values are {values[i]}')
+        #     circuits[i].assign_parameters(values[i], inplace=True)
+        #     #print(f'the {i+1} circuit parameters are {circuits[i+1].parameters}')
+        #     #circuits[i].assign_parameters(values[i][0].concatenate(values[i][1]))
+
+        #Alternate for-loop - if in-place is false, a copy of the circuit with the assigned parameters is returned.
         for i in range(len(circuits)):
-            #TODO: does assign parameters require values to be a single list?
-            circuits[i].assign_parameters(values[i], inplace=True)
-            #circuits[i].assign_parameters(values[i][0].concatenate(values[i][1]))
+            #print(f'the {i+1} circuit parameters are {circuits[i+1].parameters}')
+            circuits[i] = circuits[i].assign_parameters(values[i], inplace=False)
+            #print(f'the {i+1} circuit parameters are {circuits[i+1].parameters}')
 
         # Now we have a list of circuits and corresponding list of parameter vectors.
         # We need to partition each circuit by the partitioning strategy to create the partitioning problems.
@@ -156,7 +172,7 @@ class cutting_CompUncomp(ComputeUncompute):
         
 
 
-        #TODO: Adjust isa for multiple circuits.
+        #Adjusted isa for multiple circuits.
 
         #All circuit execution using runtime sampler.
         #TODO: check if this can be integrated with AlgorithmJob and _call. Sampler comparision with regular version.
@@ -204,11 +220,7 @@ class cutting_CompUncomp(ComputeUncompute):
         #create a job.results().fidelities to store resultant list of fidelities produced by the samplers.
 
 
-
         return reconstructed_fidelities
-
-
-        
 
 
 
@@ -237,6 +249,34 @@ class cutting_CompUncomp(ComputeUncompute):
         #local_opts = self._get_local_options(opts.__dict__)
 
         #return AlgorithmJob(ComputeUncompute._call, estimator_job, circuits, self._local, local_opts)
+
+    def run(
+        self,
+        circuits_1: QuantumCircuit | Sequence[QuantumCircuit],
+        circuits_2: QuantumCircuit | Sequence[QuantumCircuit],
+        values_1: Sequence[float] | Sequence[Sequence[float]] | None = None,
+        values_2: Sequence[float] | Sequence[Sequence[float]] | None = None,
+        **options,
+    ) -> AlgorithmJob:
+        
+        fidelities = self._run(circuits_1, circuits_2, values_1, values_2)
+
+        job = DummyJob(fidelities)
+
+        return job
+
+
+class DummyResult:
+    def __init__(self, fidelities):
+        self.fidelities = fidelities
+
+class DummyJob:
+    def __init__(self, fidelities):
+        self._result = DummyResult(fidelities)
+
+    def result(self):
+        return self._result
+
 
 
         
