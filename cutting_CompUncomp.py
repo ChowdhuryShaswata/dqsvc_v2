@@ -11,19 +11,30 @@ from qiskit import QuantumCircuit
 #from qiskit.primitives.primitive_job import PrimitiveJob
 #from qiskit.providers import Options
 #from qiskit_ibm_runtime import EstimatorV2 as Estimator
-from qiskit_aer import AerSimulator
+#from qiskit_aer import AerSimulator
 from qiskit_machine_learning.algorithm_job import AlgorithmJob
 from qiskit.quantum_info import SparsePauliOp
 import itertools
 from copy import copy
+import time
 
 #circuit cutting
 from qiskit_addon_cutting import partition_problem
-from qiskit_addon_cutting import generate_cutting_experiments
-from qiskit_ibm_runtime.fake_provider import FakeManilaV2
+from qiskit_ibm_runtime.fake_provider import FakeManilaV2, FakeManhattanV2
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import SamplerV2, Batch
-from qiskit_addon_cutting import reconstruct_expectation_values
+
+##Choices
+
+#cutting
+#from qiskit_addon_cutting import generate_cutting_experiments #default
+from functions.circuit_cutting_functions import generate_cutting_experiments #logging
+#from functions.circuit_cutting_parallelized import generate_cutting_experiments #parallelized
+
+#Reconstruction
+#from qiskit_addon_cutting import reconstruct_expectation_values #default
+from functions.circuit_cutting_functions import reconstruct_expectation_values #logging
+#from functions.circuit_cutting_parallelized import reconstruct_expectation_values #parallelized
 
 
 class cutting_CompUncomp(ComputeUncompute):
@@ -136,7 +147,8 @@ class cutting_CompUncomp(ComputeUncompute):
 
         # transpile circuits
 
-        backend = FakeManilaV2()
+        backend = FakeManhattanV2()
+        #FakeManilaV2 is a 5-qubit backend.
 
         pass_manager = generate_preset_pass_manager(optimization_level=1, backend=backend)
 
@@ -145,6 +157,8 @@ class cutting_CompUncomp(ComputeUncompute):
         isa_subexperiment_sets = []
         for i in range(len(circuits)):
             #label partition for the circuits
+            #print(circuits[i])
+            #print(f'number of qubits in circuit {i} is {circuits[i].num_qubits}')
             part_problem = self.partitioning_strategy(circuits[i], operator)
             partitioned_problems.append(part_problem)
 
@@ -199,12 +213,15 @@ class cutting_CompUncomp(ComputeUncompute):
 
         #jobs are dicts, jobs_set is a list.
 
+
+        start = time.time()
         reconstructed_fidelities = []
         #post process
         for i in range(len(jobs_set)):
             reconstructed_fidelity_terms = reconstruct_expectation_values(
                 results_set[i],
-                coefficients,
+                #modify this to take coefficients from generated experiments instead of just coefficients.
+                generated_experiments[i][1],
                 partitioned_problems[i].subobservables,
             )
 
@@ -215,6 +232,10 @@ class cutting_CompUncomp(ComputeUncompute):
             print(f"Job {i} post-processed.")
 
         print("All jobs post-processed.")
+
+        end = time.time()
+
+        print(f'Reconstruction time: {end-start}s')
             
 
         #create a job.results().fidelities to store resultant list of fidelities produced by the samplers.

@@ -12,6 +12,17 @@ from qiskit_machine_learning.kernels import FidelityQuantumKernel
 from sklearn.svm import SVC
 import matplotlib as plt
 
+#logging
+import logging
+
+logging.basicConfig(
+    filename="analysis_loop_sizes.log",  # Or any desired name
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filemode="w"  # Overwrite each run; use "a" to append instead
+)
+
+logging.info("=== Starting full execution ===")
 
 
 ## Data Preparation
@@ -29,8 +40,11 @@ labels_df = pd.read_csv(labels_file)
 
 labels = labels_df.values.ravel()
 
-# Split the data into training (80%) and testing (20%) sets
-X_train, X_test, y_train, y_test = train_test_split(features_df, labels, test_size=0.2, random_state=42)
+# # Split the data into training (80%) and testing (20%) sets
+# X_train, X_test, y_train, y_test = train_test_split(features_df, labels, test_size=0.2, random_state=42)
+
+# test partition
+X_train, X_test, y_train, y_test = train_test_split(features_df, labels, train_size=5, test_size=2, random_state=42)
 
 # Print shape of data
 print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
