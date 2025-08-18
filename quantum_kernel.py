@@ -10,7 +10,7 @@ from qiskit.primitives import StatevectorSampler as Sampler
 from qiskit_machine_learning.state_fidelities import ComputeUncompute
 from qiskit_machine_learning.kernels import FidelityQuantumKernel
 from sklearn.svm import SVC
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 #logging
 import logging
@@ -35,7 +35,7 @@ features_file = "carc_16comp_x.csv"
 labels_file = "carc_16comp_y.csv"
 
 # Load the data
-features_df = pd.read_csv(features_file)
+features_df = pd.read_csv(features_file).iloc[:, :4]
 labels_df = pd.read_csv(labels_file)
 
 labels = labels_df.values.ravel()
@@ -44,7 +44,7 @@ labels = labels_df.values.ravel()
 # X_train, X_test, y_train, y_test = train_test_split(features_df, labels, test_size=0.2, random_state=42)
 
 # test partition
-X_train, X_test, y_train, y_test = train_test_split(features_df, labels, train_size=5, test_size=2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(features_df, labels, train_size=3, test_size=2, random_state=42)
 
 # Print shape of data
 print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
@@ -54,7 +54,7 @@ print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
 
 # Build quantum feature map
 
-NUM_QUBITS = 16
+NUM_QUBITS = 4
 
 adme_feature_map = QuantumCircuit(NUM_QUBITS)
 

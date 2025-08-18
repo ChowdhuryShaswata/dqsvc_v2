@@ -28,13 +28,13 @@ from qiskit_ibm_runtime import SamplerV2, Batch
 
 #cutting
 #from qiskit_addon_cutting import generate_cutting_experiments #default
-from functions.circuit_cutting_functions import generate_cutting_experiments #logging
-#from functions.circuit_cutting_parallelized import generate_cutting_experiments #parallelized
+#from functions.circuit_cutting_functions import generate_cutting_experiments #logging
+from functions.circuit_cutting_parallelized import generate_cutting_experiments #parallelized
 
 #Reconstruction
 #from qiskit_addon_cutting import reconstruct_expectation_values #default
 from functions.circuit_cutting_functions import reconstruct_expectation_values #logging
-#from functions.circuit_cutting_parallelized import reconstruct_expectation_values #parallelized
+#from functions.circuit_cutting_parallelized import reconstruct_expectation_values as reconstruct_expectation_values #parallelized
 
 
 class cutting_CompUncomp(ComputeUncompute):
@@ -204,15 +204,17 @@ class cutting_CompUncomp(ComputeUncompute):
             
             print("A set of jobs sent to the Sampler have been processed.")
 
+            start = time.time()
             # Retrieve results
             results = {label: job.result() for label, job in jobs.items()}
+            end = time.time()
+            print(f'Result retrieval time: {end-start}s')
             results_set.append(results)
         
         print("All jobs sent to the Sampler have been processed.")
 
 
         #jobs are dicts, jobs_set is a list.
-
 
         start = time.time()
         reconstructed_fidelities = []
