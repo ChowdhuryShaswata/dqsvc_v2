@@ -46,7 +46,8 @@ from qiskit_addon_cutting.qpd import (
 from qiskit_addon_cutting.cutting_experiments import _remove_final_resets, _remove_resets_in_zero_state, _consolidate_resets, _get_bases, _get_mapping_ids_by_partition, _get_bases_by_partition, _append_measurement_circuit, _append_measurement_register
 
 
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_config, wrap_non_picklable_objects
+from joblib.externals.loky import set_loky_pickler
 
 #Reconstruct expectation values option 2 - concurrent.futures & ProcessPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
@@ -146,7 +147,7 @@ def reconstruct_expectation_values(
             )
 
     # 🔀 Parallel execution
-    partials = Parallel(n_jobs=-1)(
+    partials = Parallel(n_jobs=-1, backend="threading")(
         delayed(_compute_expval_for_coefficient)(
             i, coeff, subsystem_observables, results_dict, subobservables_by_subsystem
         )

@@ -15,6 +15,11 @@ import matplotlib.pyplot as plt
 #logging
 import logging
 
+from joblib.externals.loky import set_loky_pickler
+
+#set joblib pickler.
+#set_loky_pickler("cloudpickle")        # or "cloudpickle"
+
 logging.basicConfig(
     filename="analysis_loop_sizes.log",  # Or any desired name
     level=logging.INFO,

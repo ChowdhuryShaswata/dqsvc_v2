@@ -33,8 +33,8 @@ from functions.circuit_cutting_parallelized import generate_cutting_experiments 
 
 #Reconstruction
 #from qiskit_addon_cutting import reconstruct_expectation_values #default
-from functions.circuit_cutting_functions import reconstruct_expectation_values #logging
-#from functions.circuit_cutting_parallelized import reconstruct_expectation_values as reconstruct_expectation_values #parallelized
+#from functions.circuit_cutting_functions import reconstruct_expectation_values #logging
+from functions.circuit_cutting_parallelized import reconstruct_expectation_values as reconstruct_expectation_values #parallelized
 
 
 class cutting_CompUncomp(ComputeUncompute):
