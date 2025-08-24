@@ -53,6 +53,11 @@ from joblib.externals.loky import set_loky_pickler
 from concurrent.futures import ProcessPoolExecutor
 #from typing import Sequence, Mapping, Hashable
 
+import os
+import traceback
+from debugging.pickle_debug import diagnose_joblib_pickle
+
+
 
 ## Expectation Value Reconstruction
 ## Using joblib
@@ -146,8 +151,28 @@ def reconstruct_expectation_values(
                 f"subobservable groups ({len(so.groups)}), but it does not."
             )
 
+    dummy_env = "0"
+    #os.getenv("DIAG_PICKLE", "0")
+    # --- DIAGNOSTIC BLOCK ---
+    if dummy_env == "1":
+        try:
+            for i0, coeff0 in enumerate(coefficients):
+                diag = diagnose_joblib_pickle(
+                    _compute_expval_for_coefficient,
+                    i0, coeff0, results_dict, subobservables_by_subsystem, subsystem_observables
+                )
+                if not diag["call_tuple"]:
+                    print("[pickle-diag fail at i]", i0, diag)
+                    break
+        except Exception:
+            
+            print("[pickle-diag] Exception while diagnosing:\n", traceback.format_exc())
+            raise
+    # --- END DIAGNOSTIC BLOCK ---
+
+
     # 🔀 Parallel execution
-    partials = Parallel(n_jobs=-1, backend="threading")(
+    partials = Parallel(n_jobs=-1, backend="multiprocessing")(
         delayed(_compute_expval_for_coefficient)(
             i, coeff, subsystem_observables, results_dict, subobservables_by_subsystem
         )

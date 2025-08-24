@@ -7,15 +7,21 @@ from qiskit.circuit.library import ZZFeatureMap
 from cutting_CompUncomp import cutting_CompUncomp
 import numpy as np
 from qiskit.primitives import StatevectorSampler as Sampler
-from qiskit_machine_learning.state_fidelities import ComputeUncompute
+#from qiskit_machine_learning.state_fidelities import ComputeUncompute
 from qiskit_machine_learning.kernels import FidelityQuantumKernel
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 
+#Used for testing kernel matrix calculation for now
+
 #logging
 import logging
 
-from joblib.externals.loky import set_loky_pickler
+import os
+
+os.environ['"DIAG_PICKLE"'] = "1"
+
+#from joblib.externals.loky import set_loky_pickler
 
 #set joblib pickler.
 #set_loky_pickler("cloudpickle")        # or "cloudpickle"
