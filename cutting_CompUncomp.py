@@ -28,13 +28,13 @@ from qiskit_ibm_runtime import SamplerV2, Batch
 
 #cutting
 #from qiskit_addon_cutting import generate_cutting_experiments #default
-#from functions.circuit_cutting_functions import generate_cutting_experiments #logging
-from functions.circuit_cutting_parallelized import generate_cutting_experiments #parallelized
+from functions.circuit_cutting_functions import generate_cutting_experiments #logging
+#from functions.circuit_cutting_parallelized import generate_cutting_experiments #parallelized
 
 #Reconstruction
 #from qiskit_addon_cutting import reconstruct_expectation_values #default
-#from functions.circuit_cutting_functions import reconstruct_expectation_values #logging
-from functions.circuit_cutting_parallelized import reconstruct_expectation_values as reconstruct_expectation_values #parallelized
+from functions.circuit_cutting_functions import reconstruct_expectation_values #logging
+#from functions.circuit_cutting_parallelized import reconstruct_expectation_values as reconstruct_expectation_values #parallelized
 
 
 class cutting_CompUncomp(ComputeUncompute):

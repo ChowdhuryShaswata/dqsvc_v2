@@ -9,6 +9,7 @@ import numpy as np
 from qiskit.primitives import StatevectorSampler as Sampler
 #from qiskit_machine_learning.state_fidelities import ComputeUncompute
 from qiskit_machine_learning.kernels import FidelityQuantumKernel
+from functions.parallelized_fidelity_quantum_kernel import ParallelizedFidelityQuantumKernel
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 
@@ -95,7 +96,7 @@ fidelity = cutting_CompUncomp(sampler=sampler)
 
 # Define Quantum Kernel object.
 
-quantum_kernel = FidelityQuantumKernel(fidelity=fidelity, feature_map=adme_feature_map)
+quantum_kernel = ParallelizedFidelityQuantumKernel(fidelity=fidelity, feature_map=adme_feature_map, max_circuits_per_job=2)
 
 ## Evaluate Quantum Kernel to get kernel matrix
 
