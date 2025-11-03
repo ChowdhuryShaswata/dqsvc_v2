@@ -49,6 +49,7 @@ def _worker_init(feature_map_bytes, fidelity_ctor_payload):
 def _load_feature_map():
     if _worker_ctx["feature_map"] is None:
         bio = io.BytesIO(_worker_ctx["feature_map_bytes"])
+        print(_worker_ctx["feature_map_bytes"])
         circuits = list(qpy.load(bio))
         if len(circuits) != 1:
             raise RuntimeError("Expected exactly one feature map circuit in QPY payload.")

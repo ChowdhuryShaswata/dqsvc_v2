@@ -172,7 +172,7 @@ def reconstruct_expectation_values(
 
 
     # 🔀 Parallel execution
-    partials = Parallel(n_jobs=-1, backend="threading")(
+    partials = Parallel(n_jobs=-1, backend="multiprocessing")(
         delayed(_compute_expval_for_coefficient)(
             i, coeff, subsystem_observables, results_dict, subobservables_by_subsystem
         )

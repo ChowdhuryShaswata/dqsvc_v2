@@ -55,7 +55,7 @@ def dQSVC_script():
 
     adme_feature_map = adme_feature_map.decompose()
 
-    print(f'Manual kernel parameters: {adme_feature_map.parameters}')
+    # print(f'Manual kernel parameters: {adme_feature_map.parameters}')
 
     ## Quantum Kernel
 

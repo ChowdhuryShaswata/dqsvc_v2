@@ -1,0 +1,145 @@
+from qiskit.primitives import StatevectorSampler as Sampler
+from qiskit import QuantumCircuit
+from qiskit.circuit.library import RealAmplitudes
+
+# --- NEW: imports for (de)serialization & comparison ---
+import pickle
+import numpy as np
+from collections.abc import Mapping, Sequence
+
+def deep_equal(a, b) -> bool:
+    """Deep equality that understands numpy arrays and nested containers."""
+    if a is b:
+        return True
+    if type(a) is not type(b):
+        return False
+
+    # Numpy arrays
+    if isinstance(a, np.ndarray):
+        return np.array_equal(a, b)
+
+    # Mappings (dict-like)
+    if isinstance(a, Mapping):
+        if a.keys() != b.keys():
+            return False
+        return all(deep_equal(a[k], b[k]) for k in a.keys())
+
+    # Sequences (but not strings/bytes)
+    if isinstance(a, Sequence) and not isinstance(a, (str, bytes, bytearray)):
+        if len(a) != len(b):
+            return False
+        return all(deep_equal(x, y) for x, y in zip(a, b))
+
+    # Fallback to == (covers dataclasses that implement equality)
+    try:
+        return a == b
+    except Exception:
+        # Last resort: compare repr
+        return repr(a) == repr(b)
+
+def normalize_sampler_result(res):
+    """
+    Extracts key fields likely to exist on Sampler/StatevectorSampler results,
+    so we can compare content even if the class doesn't implement __eq__.
+    """
+    out = {"_type": type(res).__name__}
+
+    # Common fields across Qiskit Sampler results (new/old)
+    for field in [
+        "quasi_dists", "quasi_dist", "probabilities", "metadata",
+        "pub_results", "meas", "shots", "samples", "values"
+    ]:
+        if hasattr(res, field):
+            val = getattr(res, field)
+            # Convert any dict-like distributions to plain dicts for stable compare
+            if field in ("quasi_dists", "probabilities", "values"):
+                try:
+                    val = [dict(x) for x in val]
+                except Exception:
+                    pass
+            out[field] = val
+
+    # If nothing recognizable was found, fall back to repr for a stable signature
+    if len(out) == 1:
+        out["_repr"] = repr(res)
+    return out
+
+def serialize(obj) -> bytes:
+    return pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
+
+def deserialize(data: bytes):
+    return pickle.loads(data)
+
+def compare_results(original, reconstructed, label: str):
+    # Try direct equality first
+    direct_eq = deep_equal(original, reconstructed)
+    # Then compare normalized content
+    norm_o = normalize_sampler_result(original)
+    norm_r = normalize_sampler_result(reconstructed)
+    normalized_eq = deep_equal(norm_o, norm_r)
+
+    print(f"[{label}] Direct equality: {direct_eq}")
+    print(f"[{label}] Normalized content equality: {normalized_eq}")
+
+    if not direct_eq or not normalized_eq:
+        print(f"[{label}] Original (normalized): {norm_o}")
+        print(f"[{label}] Reconstructed (normalized): {norm_r}")
+
+# -------------------------------------------------------------------------
+
+# create a Bell circuit
+bell = QuantumCircuit(2)
+bell.h(0)
+bell.cx(0, 1)
+bell.measure_all()
+
+# create two parameterized circuits
+pqc = RealAmplitudes(num_qubits=2, reps=2)
+pqc.measure_all()
+pqc2 = RealAmplitudes(num_qubits=2, reps=3)
+pqc2.measure_all()
+
+theta1 = [0, 1, 1, 2, 3, 5]
+theta2 = [0, 1, 2, 3, 4, 5, 6, 7]
+
+# initialization of the sampler
+sampler = Sampler()
+
+# collect 128 shots from the Bell circuit
+job = sampler.run([bell], shots=128)
+job_result1 = job.result()
+print(f"The primitive-job finished with result {job_result1}")
+
+# run a sampler job on the parameterized circuits
+job2 = sampler.run([(pqc, theta1), (pqc2, theta2)])
+job_result2 = job2.result()
+print(f"The primitive-job finished with result {job_result2}")
+
+# --- NEW: serialize, deserialize, and compare ---
+
+# In-memory serialization
+blob1 = serialize(job_result1)
+blob2 = serialize(job_result2)
+
+# Round-trip
+job_result1_rt = deserialize(blob1)
+job_result2_rt = deserialize(blob2)
+
+# Compare originals vs reconstructed
+compare_results(job_result1, job_result1_rt, label="job_result1")
+compare_results(job_result2, job_result2_rt, label="job_result2")
+
+print(f"The primitive-job result is {job_result2}")
+print(f"The primitive-job result unserialized is {job_result2_rt}")
+
+# (Optional) If you want file-based persistence instead of in-memory:
+# with open("job_result1.pkl", "wb") as f:
+#     f.write(blob1)
+# with open("job_result2.pkl", "wb") as f:
+#     f.write(blob2)
+# with open("job_result1.pkl", "rb") as f:
+#     job_result1_file = deserialize(f.read())
+# with open("job_result2.pkl", "rb") as f:
+#     job_result2_file = deserialize(f.read())
+# compare_results(job_result1, job_result1_file, label="job_result1 (file)")
+# compare_results(job_result2, job_result2_file, label="job_result2 (file)")

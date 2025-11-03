@@ -5,9 +5,11 @@ import os
 from quantum_kernel_callable import dQSVC_script
 
 from multiprocessing import Process, freeze_support
+import multiprocessing as mp
 
 if __name__ == '__main__':
     freeze_support()
+    mp.set_start_method("fork")
     os.environ['"DIAG_PICKLE"'] = "1"
 
     #Set up logging
