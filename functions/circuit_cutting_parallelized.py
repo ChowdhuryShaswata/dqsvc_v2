@@ -24,17 +24,26 @@ from qiskit.primitives import (
     PrimitiveResult,  # for SamplerV2
 )
 
-from qiskit_addon_cutting.utils.observable_grouping import CommutingObservableGroup, ObservableCollection
-#from qiskit_addon_cutting.utils.bitwise import bit_count
+from qiskit_addon_cutting.utils.observable_grouping import (
+    CommutingObservableGroup,
+    ObservableCollection,
+)
+
+# from qiskit_addon_cutting.utils.bitwise import bit_count
 from qiskit_addon_cutting.cutting_decomposition import decompose_observables
-#from qiskit_addon_cutting.cutting_experiments import _get_pauli_indices
+
+# from qiskit_addon_cutting.cutting_experiments import _get_pauli_indices
 from qiskit_addon_cutting.qpd import WeightType
-from qiskit_addon_cutting.cutting_reconstruction import _process_outcome, _process_outcome_v2
+from qiskit_addon_cutting.cutting_reconstruction import (
+    _process_outcome,
+    _process_outcome_v2,
+)
 
 from qiskit.circuit import QuantumCircuit
 
 from qiskit_addon_cutting.utils.iteration import strict_zip
-#from qiskit_addon_cutting.utils.observable_grouping import ObservableCollection, CommutingObservableGroup
+
+# from qiskit_addon_cutting.utils.observable_grouping import ObservableCollection, CommutingObservableGroup
 from qiskit_addon_cutting.qpd import (
     QPDBasis,
     SingleQubitQPDGate,
@@ -43,28 +52,37 @@ from qiskit_addon_cutting.qpd import (
     decompose_qpd_instructions,
 )
 
-from qiskit_addon_cutting.cutting_experiments import _remove_final_resets, _remove_resets_in_zero_state, _consolidate_resets, _get_bases, _get_mapping_ids_by_partition, _get_bases_by_partition, _append_measurement_circuit, _append_measurement_register
+from qiskit_addon_cutting.cutting_experiments import (
+    _remove_final_resets,
+    _remove_resets_in_zero_state,
+    _consolidate_resets,
+    _get_bases,
+    _get_mapping_ids_by_partition,
+    _get_bases_by_partition,
+    _append_measurement_circuit,
+    _append_measurement_register,
+)
 
 
 from joblib import Parallel, delayed, parallel_config, wrap_non_picklable_objects
 from joblib.externals.loky import set_loky_pickler
 
-#Reconstruct expectation values option 2 - concurrent.futures & ProcessPoolExecutor
+# Reconstruct expectation values option 2 - concurrent.futures & ProcessPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
-#from typing import Sequence, Mapping, Hashable
+# from typing import Sequence, Mapping, Hashable
 
 import os
 import traceback
 from debugging.pickle_debug import diagnose_joblib_pickle
 
 
-
 ## Expectation Value Reconstruction
 ## Using joblib
 
+
 def _compute_expval_for_coefficient(
     i: int,
-    coeff: tuple[float, 'WeightType'],
+    coeff: tuple[float, "WeightType"],
     subsystem_observables,
     results_dict,
     subobservables_by_subsystem,
@@ -104,10 +122,9 @@ def _compute_expval_for_coefficient(
     return coeff[0] * current_expvals
 
 
-
 def reconstruct_expectation_values(
     results,
-    coefficients: Sequence[tuple[float, 'WeightType']],
+    coefficients: Sequence[tuple[float, "WeightType"]],
     observables: PauliList | dict[Hashable, PauliList],
 ) -> list[float]:
     if isinstance(observables, PauliList):
@@ -117,14 +134,20 @@ def reconstruct_expectation_values(
             )
         if any(obs.phase != 0 for obs in observables):
             raise ValueError("An input observable has a phase not equal to 1.")
-        subobservables_by_subsystem = decompose_observables(observables, "A" * len(observables[0]))
+        subobservables_by_subsystem = decompose_observables(
+            observables, "A" * len(observables[0])
+        )
         results_dict = {"A": results}
         num_expvals = len(observables)
     elif isinstance(observables, Mapping):
         if not isinstance(results, Mapping):
-            raise ValueError("If observables is a dictionary, results must also be a dictionary.")
+            raise ValueError(
+                "If observables is a dictionary, results must also be a dictionary."
+            )
         if observables.keys() != results.keys():
-            raise ValueError("The subsystem labels of the observables and results do not match.")
+            raise ValueError(
+                "The subsystem labels of the observables and results do not match."
+            )
         results_dict = results
         for label, subobservable in observables.items():
             if any(obs.phase != 0 for obs in subobservable):
@@ -152,24 +175,26 @@ def reconstruct_expectation_values(
             )
 
     dummy_env = "0"
-    #os.getenv("DIAG_PICKLE", "0")
+    # os.getenv("DIAG_PICKLE", "0")
     # --- DIAGNOSTIC BLOCK ---
     if dummy_env == "1":
         try:
             for i0, coeff0 in enumerate(coefficients):
                 diag = diagnose_joblib_pickle(
                     _compute_expval_for_coefficient,
-                    i0, coeff0, results_dict, subobservables_by_subsystem, subsystem_observables
+                    i0,
+                    coeff0,
+                    results_dict,
+                    subobservables_by_subsystem,
+                    subsystem_observables,
                 )
                 if not diag["call_tuple"]:
                     print("[pickle-diag fail at i]", i0, diag)
                     break
         except Exception:
-            
             print("[pickle-diag] Exception while diagnosing:\n", traceback.format_exc())
             raise
     # --- END DIAGNOSTIC BLOCK ---
-
 
     # 🔀 Parallel execution
     partials = Parallel(n_jobs=-1, backend="multiprocessing")(
@@ -182,7 +207,9 @@ def reconstruct_expectation_values(
     total_expvals = np.sum(partials, axis=0)
     return list(total_expvals)
 
+
 ## Using concurrent.futures
+
 
 def _compute_single_coefficient_contribution(
     i: int,
@@ -193,7 +220,9 @@ def _compute_single_coefficient_contribution(
 ) -> np.ndarray:
     current_expvals = np.ones(len(list(subobservables_by_subsystem.values())[0]))
     for label, so in subsystem_observables.items():
-        subsystem_expvals = [np.zeros(len(cog.commuting_observables)) for cog in so.groups]
+        subsystem_expvals = [
+            np.zeros(len(cog.commuting_observables)) for cog in so.groups
+        ]
         current_result = results_dict[label]
 
         for k, cog in enumerate(so.groups):
@@ -223,7 +252,9 @@ def _compute_single_coefficient_contribution(
 
 
 def reconstruct_expectation_values_concurrent(
-    results: SamplerResult | PrimitiveResult | dict[Hashable, SamplerResult | PrimitiveResult],
+    results: SamplerResult
+    | PrimitiveResult
+    | dict[Hashable, SamplerResult | PrimitiveResult],
     coefficients: Sequence[tuple[float, WeightType]],
     observables: PauliList | dict[Hashable, PauliList],
 ) -> list[float]:
@@ -232,7 +263,9 @@ def reconstruct_expectation_values_concurrent(
             raise ValueError(...)
         if any(obs.phase != 0 for obs in observables):
             raise ValueError(...)
-        subobservables_by_subsystem = decompose_observables(observables, "A" * len(observables[0]))
+        subobservables_by_subsystem = decompose_observables(
+            observables, "A" * len(observables[0])
+        )
         results_dict = {"A": results}
         expvals = np.zeros(len(observables))
     elif isinstance(observables, Mapping):
@@ -278,8 +311,8 @@ def reconstruct_expectation_values_concurrent(
     return list(expvals)
 
 
-
 ## Generate Cutting Experiments parallelization
+
 
 def _process_sample(
     sample_index,
@@ -297,13 +330,19 @@ def _process_sample(
 ):
     from copy import deepcopy
 
-    actual_coeff = np.prod([basis.coeffs[map_id] for basis, map_id in zip(bases, map_ids)])
+    actual_coeff = np.prod(
+        [basis.coeffs[map_id] for basis, map_id in zip(bases, map_ids)]
+    )
     sampled_coeff = (redundancy / num_samples) * (kappa * np.sign(actual_coeff))
     result_circuits = defaultdict(list)
 
     for label, so in subsystem_observables.items():
         subcircuit = subcircuit_dict[label]
-        map_ids_tmp = map_ids if not is_separated else tuple(map_ids[j] for j in subcirc_map_ids[label])
+        map_ids_tmp = (
+            map_ids
+            if not is_separated
+            else tuple(map_ids[j] for j in subcirc_map_ids[label])
+        )
 
         for cog in so.groups:
             new_qc = _append_measurement_register(deepcopy(subcircuit), cog)
@@ -338,12 +377,14 @@ def generate_cutting_experiments(
         }
         bases, qpd_gate_ids = _get_bases(circuits)
         subcirc_qpd_gate_ids: dict[Hashable, list[list[int]]] = {"A": qpd_gate_ids}
-        #The subcirc_map_ids line below is introduced to allow use of joblib with this variable when is_seperated == False.
+        # The subcirc_map_ids line below is introduced to allow use of joblib with this variable when is_seperated == False.
         subcirc_map_ids = {"A": list(range(len(qpd_gate_ids)))}
     else:
         is_separated = True
         subcircuit_dict = circuits
-        subcirc_qpd_gate_ids, subcirc_map_ids = _get_mapping_ids_by_partition(subcircuit_dict)
+        subcirc_qpd_gate_ids, subcirc_map_ids = _get_mapping_ids_by_partition(
+            subcircuit_dict
+        )
         bases = _get_bases_by_partition(subcircuit_dict, subcirc_qpd_gate_ids)
         subsystem_observables = {
             label: ObservableCollection(so) for label, so in observables.items()
@@ -396,6 +437,3 @@ def generate_cutting_experiments(
         subexperiments_out = list(subexperiments_dict.values())[0]
 
     return subexperiments_out, coefficients
-
-
-
