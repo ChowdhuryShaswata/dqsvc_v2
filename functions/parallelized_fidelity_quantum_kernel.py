@@ -5,12 +5,15 @@ from typing import List, Tuple
 
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.primitives import Sampler
-#from ..state_fidelities import BaseStateFidelity, ComputeUncompute
+from qiskit.primitives import StatevectorSampler as Sampler
+
+# from ..state_fidelities import BaseStateFidelity, ComputeUncompute
 from cutting_CompUncomp import cutting_CompUncomp
 
-#from .base_kernel import BaseKernel
-from qiskit_machine_learning.kernels.fidelity_quantum_kernel import FidelityQuantumKernel
+# from .base_kernel import BaseKernel
+from qiskit_machine_learning.kernels.fidelity_quantum_kernel import (
+    FidelityQuantumKernel,
+)
 
 import io
 from qiskit import qpy
@@ -23,28 +26,33 @@ _worker_ctx = {
     "fidelity_ctor_payload": None,
 }
 
+
 def _run_chunk(left_right_chunk):
     """Execute one chunk and return the fidelities list."""
     feature_map = _load_feature_map()
     fidelity = _build_fidelity()
-    n = left_right_chunk.shape[0]
+    left, right = left_right_chunk
+    n = left.shape[0]
     job = fidelity.run(
         [feature_map] * n,
         [feature_map] * n,
-        left_right_chunk[0],
-        left_right_chunk[1],
+        left,
+        right,
     )
     return job.result().fidelities  # list[float]
 
+
 def _build_fidelity():
     ctor = _worker_ctx["fidelity_ctor_payload"]
-    #`ctor()` should return an initialized fidelity primitive.
+    # `ctor()` should return an initialized fidelity primitive.
     return ctor()
+
 
 def _worker_init(feature_map_bytes, fidelity_ctor_payload):
     _worker_ctx["feature_map_bytes"] = feature_map_bytes
     _worker_ctx["fidelity_ctor_payload"] = fidelity_ctor_payload
     _worker_ctx["feature_map"] = None  # lazy-load
+
 
 def _load_feature_map():
     if _worker_ctx["feature_map"] is None:
@@ -52,16 +60,19 @@ def _load_feature_map():
         print(_worker_ctx["feature_map_bytes"])
         circuits = list(qpy.load(bio))
         if len(circuits) != 1:
-            raise RuntimeError("Expected exactly one feature map circuit in QPY payload.")
+            raise RuntimeError(
+                "Expected exactly one feature map circuit in QPY payload."
+            )
         _worker_ctx["feature_map"] = circuits[0]
     return _worker_ctx["feature_map"]
 
+
 class ParallelizedFidelityQuantumKernel(FidelityQuantumKernel):
     """
-    Parallelization of Qiskit ML's Fidelity Quantum Kernel, designed for use on HPCs. 
+    Parallelization of Qiskit ML's Fidelity Quantum Kernel, designed for use on HPCs.
     Currently parallelizes the kernel entry computation.
     """
-    
+
     def _make_fidelity_for_worker(self):
         """Return a newly constructed fidelity primitive equivalent to self._fidelity."""
 
@@ -69,7 +80,6 @@ class ParallelizedFidelityQuantumKernel(FidelityQuantumKernel):
         fidelity = cutting_CompUncomp(sampler=sampler)
         return fidelity
 
-    
     def _get_kernel_entries(self, left_parameters, right_parameters):
         import io
         from qiskit import qpy
@@ -88,8 +98,8 @@ class ParallelizedFidelityQuantumKernel(FidelityQuantumKernel):
 
         if self.max_circuits_per_job is None:
             job = self._fidelity.run(
-                [self._feature_map]*len(left_parameters),
-                [self._feature_map]*len(right_parameters),
+                [self._feature_map] * len(left_parameters),
+                [self._feature_map] * len(right_parameters),
                 left_parameters,
                 right_parameters,
             )
@@ -98,9 +108,15 @@ class ParallelizedFidelityQuantumKernel(FidelityQuantumKernel):
         # Chunking
         m = self.max_circuits_per_job
         tasks = [
-            (left_parameters[i:i+m], right_parameters[i:i+m])
+            (left_parameters[i : i + m], right_parameters[i : i + m])
             for i in range(0, len(left_parameters), m)
         ]
+
+        # # DEBUGGING: Tuple shape debugging
+        # print("Tasks shapes:")
+        # print(type(tasks[0]), tasks[0])
+        # _run_chunk(tasks[0])
+        # # DEBUGGING: End
 
         with ProcessPoolExecutor(
             initializer=_worker_init,
